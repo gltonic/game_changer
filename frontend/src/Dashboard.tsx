@@ -26,37 +26,37 @@ export function Dashboard({
     <>
       {/* Player Level & XP Card */}
       <section 
-        className="bg-gradient-to-r from-[#0c0c0c] to-[#121212] border border-[#d4af37]/25 rounded-2xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden cursor-pointer hover:border-[#d4af37]/40 transition-colors group"
+        className="shrink-0 bg-gradient-to-br from-[#121212] via-[#0c0c0c] to-[#080808] border border-[#d4af37]/30 rounded-2xl p-4 shadow-[0_4px_24px_rgba(0,0,0,0.6)] relative cursor-pointer hover:border-[#d4af37]/50 transition-all group"
         onClick={onOpenAchievements}
       >
-        <div className="flex justify-between items-center mb-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.2)]">
-              <Trophy size={18} />
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] shadow-[0_0_12px_rgba(212,175,55,0.25)] shrink-0">
+              <Trophy size={20} />
             </div>
-            <div>
+            <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-[#d4af37] font-bold">
-                  Уровень {levelInfo.level}
+                <span className="text-[11px] font-mono tracking-widest uppercase text-[#d4af37] font-bold">
+                  УРОВЕНЬ {levelInfo.level}
                 </span>
-                <span className="text-[9px] bg-white/10 text-gray-300 px-1.5 py-0.5 rounded font-mono uppercase">
+                <span className="text-[10px] bg-white/10 text-gray-300 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
                   {levelInfo.title}
                 </span>
               </div>
-              <h3 className="text-white text-sm font-medium tracking-wide">
+              <span className="text-white text-xs font-medium tracking-wide mt-0.5">
                 Прокачка профиля
-              </h3>
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 text-[#d4af37] text-xs font-mono font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 text-[#d4af37] text-xs font-mono font-medium opacity-85 group-hover:opacity-100 transition-opacity bg-[#d4af37]/10 px-2.5 py-1 rounded-full border border-[#d4af37]/25 shrink-0">
             <span>Трофеи</span>
-            <ChevronRight size={14} />
+            <ChevronRight size={13} />
           </div>
         </div>
 
         {/* XP Progress Bar */}
-        <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden mt-3 mb-1.5 p-0.5">
+        <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden mt-2 mb-1.5 p-0.5">
           <div 
             className="bg-gradient-to-r from-[#b5952f] to-[#d4af37] h-full rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(212,175,55,0.6)]" 
             style={{ width: `${levelInfo.progressPct}%` }}
@@ -64,12 +64,12 @@ export function Dashboard({
         </div>
         <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
           <span>{levelInfo.currentLevelXp} / {levelInfo.neededLevelXp} XP</span>
-          <span className="text-[#d4af37]">{levelInfo.progressPct}%</span>
+          <span className="text-[#d4af37] font-bold">{levelInfo.progressPct}%</span>
         </div>
       </section>
 
       {/* Progress Bars */}
-      <section className="flex flex-col gap-4">
+      <section className="shrink-0 flex flex-col gap-4">
         <div>
           <div className="flex justify-between items-end mb-2">
             <h2 className="text-[10px] uppercase tracking-widest text-white">Today's Progress</h2>
@@ -92,7 +92,7 @@ export function Dashboard({
       </section>
 
       {/* Today's Schedule */}
-      <section className="flex flex-col gap-4">
+      <section className="shrink-0 flex flex-col gap-4">
          <div className="flex justify-between items-center mb-2">
            <h2 className="text-xs uppercase tracking-widest text-gray-500">Today's Schedule</h2>
          </div>
@@ -150,7 +150,7 @@ export function Dashboard({
       </section>
 
       {/* Focus Streak */}
-      <section className="mt-4 bg-[#0a0a0a] border border-white/5 p-6 flex justify-between items-center">
+      <section className="shrink-0 mt-4 bg-[#0a0a0a] border border-white/5 p-6 flex justify-between items-center rounded-2xl">
          <div className="flex flex-col">
             <h3 className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Focus Streak</h3>
             <div className="flex items-baseline gap-2">
