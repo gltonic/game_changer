@@ -3,12 +3,23 @@ import { LayoutDashboard, Route, Compass, X, Target, Play, Check, Zap, Settings,
 import { Dashboard } from './Dashboard'
 import { PathView } from './PathView'
 import { supabase } from './lib/supabase'
+import { CelebrationModal } from './components/CelebrationModal'
+import { AchievementsModal } from './components/AchievementsModal'
+import { calculateLevel, getRandomQuote, getAchievements, type Quote } from './lib/gamification'
 
 function App() {
   const [activeTab, setActiveTab] = useState<'dash' | 'path' | 'hub'>('dash')
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false)
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false)
+  const [celebrationData, setCelebrationData] = useState<{
+    isOpen: boolean;
+    quote: Quote;
+    earnedXp: number;
+    questTitle: string;
+    dayNumber: number;
+  } | null>(null)
   
   // State for the Quest Form
   const [questTitle, setQuestTitle] = useState('Deep Work')
@@ -28,10 +39,54 @@ function App() {
   const tg = window.Telegram?.WebApp;
   const USER_ID = tg?.initDataUnsafe?.user?.id || 111111111;
 
+  const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error') => {
+    if (!tg?.HapticFeedback) return;
+    try {
+      if (type === 'success' || type === 'warning' || type === 'error') {
+        tg.HapticFeedback.notificationOccurred(type);
+      } else {
+        tg.HapticFeedback.impactOccurred(type);
+      }
+    } catch (e) {
+      // Ignore in non-supported environments
+    }
+  };
+
   useEffect(() => {
-    document.documentElement.classList.add('dark')
-    fetchData()
-  }, [])
+    document.documentElement.classList.add('dark');
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.enableClosingConfirmation?.();
+    }
+    fetchData();
+  }, []);
+
+  // Управление нативной кнопкой Назад в Telegram
+  useEffect(() => {
+    const canUseBackButton = tg?.isVersionAtLeast?.('6.1') && tg?.BackButton;
+    if (!canUseBackButton) return;
+    const isModalOpen = selectedDay !== null || isSettingsOpen || isFreezeModalOpen || isAchievementsOpen || !!celebrationData?.isOpen;
+    const canGoBack = activeTab !== 'dash' || isModalOpen;
+
+    if (canGoBack) {
+      tg.BackButton.show();
+      const handleBack = () => {
+        if (celebrationData?.isOpen) setCelebrationData(null);
+        else if (isAchievementsOpen) setIsAchievementsOpen(false);
+        else if (selectedDay !== null) setSelectedDay(null);
+        else if (isSettingsOpen) setIsSettingsOpen(false);
+        else if (isFreezeModalOpen) setIsFreezeModalOpen(false);
+        else if (activeTab !== 'dash') setActiveTab('dash');
+      };
+      tg.BackButton.onClick(handleBack);
+      return () => {
+        tg.BackButton.offClick(handleBack);
+      };
+    } else {
+      tg.BackButton.hide();
+    }
+  }, [activeTab, selectedDay, isSettingsOpen, isFreezeModalOpen, isAchievementsOpen, celebrationData]);
 
   const fetchData = async () => {
     const [questsRes, logsRes, userRes] = await Promise.all([
@@ -62,6 +117,7 @@ function App() {
   };
 
   const handleOpenHabit = (quest: any) => {
+    triggerHaptic('light');
     setSelectedQuest(quest);
     setActiveTab('path');
     
@@ -75,16 +131,49 @@ function App() {
     if (!selectedQuest || selectedDay === null) return;
     try {
       setIsSaving(true);
+      const nowIso = new Date().toISOString();
       const { error } = await supabase.from('quest_logs').insert([
-        { quest_id: selectedQuest.id, user_id: USER_ID, day_number: selectedDay }
+        { quest_id: selectedQuest.id, user_id: USER_ID, day_number: selectedDay, completed_at: nowIso }
       ]);
       if (error) {
         if (error.code === '23505') {
            alert('You already completed this day!');
         } else throw error;
       } else {
+        triggerHaptic('success');
+        
+        const earnedXp = 50;
+        const currentXp = userDb?.xp || 0;
+        const newXp = currentXp + earnedXp;
+        const updatePayload: any = { xp: newXp };
+
+        // Проверяем, выполнил ли пользователь все свои квесты на сегодня
+        const alreadyCompletedToday = completedTodayIds.includes(selectedQuest.id);
+        const willBeCompletedCount = alreadyCompletedToday ? completedTodayIds.length : (completedTodayIds.length + 1);
+        const allQuestsCompletedToday = quests.length > 0 && willBeCompletedCount >= quests.length;
+        
+        const todayDateStr = new Date().toISOString().split('T')[0];
+        if (allQuestsCompletedToday && userDb?.last_active_date !== todayDateStr) {
+          updatePayload.streak = (userDb?.streak || 0) + 1;
+          updatePayload.last_active_date = todayDateStr;
+        }
+
+        await supabase.from('users').update(updatePayload).eq('id', USER_ID);
+
+        const savedDay = selectedDay;
+        const savedQuestTitle = selectedQuest.title;
+
         await fetchData();
         setSelectedDay(null);
+
+        // Открываем поздравительный экран с конфетти, мотивирующей цитатой и XP
+        setCelebrationData({
+          isOpen: true,
+          quote: getRandomQuote(),
+          earnedXp,
+          questTitle: savedQuestTitle,
+          dayNumber: savedDay
+        });
       }
     } catch(e) {
       console.error(e);
@@ -190,11 +279,11 @@ function App() {
 
         {activeTab === 'dash' && (
           <>
-            <header className="px-6 py-8 flex flex-col gap-1 z-10">
+            <header className="px-6 pt-5 pb-3 flex flex-col gap-1 z-10 shrink-0">
               <h1 className="text-3xl font-serif text-white tracking-widest uppercase">Game Changer</h1>
               <p className="text-[#d4af37] text-xs font-mono tracking-[0.2em] uppercase opacity-80">Focus. Discipline. Freedom.</p>
               
-              <div className="flex items-center justify-between px-2 mt-6 border-b border-white/10 pb-6">
+              <div className="flex items-center justify-between px-2 mt-4 border-b border-white/10 pb-4">
                  <div className="flex flex-col items-center">
                     <span className="text-2xl font-light text-[#d4af37] flex items-center gap-2">
                       <Droplet size={20} fill="currentColor" />
@@ -221,7 +310,7 @@ function App() {
                  </button>
               </div>
             </header>
-            <main className="flex-1 px-6 flex flex-col gap-8 z-10 overflow-y-auto no-scrollbar pb-8">
+            <main className="flex-1 px-6 flex flex-col gap-5 z-10 overflow-y-auto no-scrollbar pb-8">
               <Dashboard 
                 onOpenHabit={handleOpenHabit} 
                 quests={quests} 
@@ -229,6 +318,8 @@ function App() {
                 focusStreak={userDb?.streak || 0}
                 todayProgressPct={todayProgressPct}
                 completedTodayIds={completedTodayIds}
+                levelInfo={calculateLevel(userDb?.xp || 0)}
+                onOpenAchievements={() => setIsAchievementsOpen(true)}
               />
             </main>
           </>
@@ -250,7 +341,9 @@ function App() {
                   setSelectedQuest(quest);
                 }}
                 logs={logs.filter(l => l.quest_id === selectedQuest.id)}
-                onDayClick={setSelectedDay} 
+                onDayClick={setSelectedDay}
+                userDb={userDb}
+                onOpenShields={() => setIsFreezeModalOpen(true)}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 mt-20">
@@ -618,6 +711,25 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* Модалка Празднования Дня (Конфетти, Цитата, XP) */}
+        {celebrationData && (
+          <CelebrationModal
+            isOpen={celebrationData.isOpen}
+            onClose={() => setCelebrationData(null)}
+            quote={celebrationData.quote}
+            earnedXp={celebrationData.earnedXp}
+            questTitle={celebrationData.questTitle}
+            dayNumber={celebrationData.dayNumber}
+          />
+        )}
+
+        {/* Модалка Достижений */}
+        <AchievementsModal
+          isOpen={isAchievementsOpen}
+          onClose={() => setIsAchievementsOpen(false)}
+          achievements={getAchievements(userDb, logs)}
+        />
 
       </div>
     </div>

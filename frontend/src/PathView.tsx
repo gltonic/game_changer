@@ -7,9 +7,11 @@ interface PathViewProps {
   onSelectQuest: (quest: any) => void;
   logs: any[];
   onDayClick: (day: number) => void;
+  userDb?: any;
+  onOpenShields?: () => void;
 }
 
-export function PathView({ quest, quests, onSelectQuest, logs, onDayClick }: PathViewProps) {
+export function PathView({ quest, quests, onSelectQuest, logs, onDayClick, userDb, onOpenShields }: PathViewProps) {
   const totalDays = quest.total_days || 21;
   const completedDaysCount = logs.length;
   // Если все дни пройдены, то currentDay не может превышать totalDays
@@ -36,17 +38,21 @@ export function PathView({ quest, quests, onSelectQuest, logs, onDayClick }: Pat
            <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5 text-[#d4af37] bg-[#d4af37]/10 px-3 py-1 rounded-full border border-[#d4af37]/20">
                  <Droplet size={16} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(212,175,55,0.8)]" />
-                 <span className="font-mono font-bold text-sm">23</span>
+                 <span className="font-mono font-bold text-sm">{userDb?.streak || 0}</span>
               </div>
               <div className="flex items-center gap-1.5 text-red-500 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
                  <Heart size={16} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]" />
-                 <span className="font-mono font-bold text-sm">3</span>
+                 <span className="font-mono font-bold text-sm">{userDb?.lives ?? 3}</span>
               </div>
            </div>
            
-           <div className="flex items-center gap-1.5 text-sky-400 bg-sky-400/10 px-3 py-1 rounded-full border border-sky-400/20">
+           <button 
+             onClick={onOpenShields}
+             className="flex items-center gap-1.5 text-sky-400 bg-sky-400/10 px-3 py-1 rounded-full border border-sky-400/20 cursor-pointer hover:bg-sky-400/20 transition-colors"
+           >
               <Shield size={16} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(56,189,248,0.8)]" />
-           </div>
+              <span className="font-mono font-bold text-sm">{userDb?.shields ?? 3}</span>
+           </button>
         </div>
 
         {/* Нижний ряд: Список миссий (Горизонтальный скролл) */}

@@ -128,12 +128,17 @@ cron.schedule('1 0 * * *', async () => {
     if (!quests || quests.length === 0) continue;
 
     // Ищем логи (выполненные задания) за вчера
-    // Так как supabase хранит в UTC, упрощенный запрос по дате (в MVP пойдет)
-    const { data: logs } = await supabase.from('quest_logs')
+    // Колонка в таблице называется completed_at
+    const { data: logs, error: logsErr } = await supabase.from('quest_logs')
       .select('quest_id')
       .eq('user_id', user.id)
-      .gte('created_at', yesterdayStr + 'T00:00:00')
-      .lte('created_at', yesterdayStr + 'T23:59:59');
+      .gte('completed_at', yesterdayStr + 'T00:00:00.000Z')
+      .lte('completed_at', yesterdayStr + 'T23:59:59.999Z');
+
+    if (logsErr) {
+      console.error(`Error fetching quest_logs for user ${user.id}:`, logsErr);
+      continue;
+    }
 
     const completedQuestsCount = logs ? logs.length : 0;
     const allCompleted = completedQuestsCount >= quests.length;
@@ -143,7 +148,12 @@ cron.schedule('1 0 * * *', async () => {
 
     let lifeLost = false;
 
-    if (!allCompleted) {
+    if (allCompleted) {
+      // Все привычки выполнены: если стрик еще не был инкрементирован за вчера, прибавляем
+      if (user.last_active_date !== yesterdayStr) {
+        updatedStreak = (user.streak ?? 0) + 1;
+      }
+    } else {
       if (usedShieldYesterday) {
         // Щит спас от потери жизни! Стрик просто не сбросился.
       } else {
@@ -159,7 +169,8 @@ cron.schedule('1 0 * * *', async () => {
       shields: updatedShields,
       last_shield_reset_month: updatedResetMonth,
       lives: updatedLives,
-      streak: updatedStreak
+      streak: updatedStreak,
+      last_active_date: allCompleted ? yesterdayStr : user.last_active_date
     }).eq('id', user.id);
 
     // Отправляем пуш-уведомление в Телеграм, если жизнь сгорела

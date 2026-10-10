@@ -1,4 +1,5 @@
-import { Zap, Droplet, Check } from 'lucide-react'
+import { Zap, Droplet, Check, Trophy, ChevronRight } from 'lucide-react'
+import type { LevelInfo } from './lib/gamification'
 
 interface DashboardProps {
   onOpenHabit: (quest: any) => void;
@@ -7,11 +8,66 @@ interface DashboardProps {
   focusStreak: number;
   todayProgressPct: number;
   completedTodayIds: string[];
+  levelInfo: LevelInfo;
+  onOpenAchievements: () => void;
 }
 
-export function Dashboard({ onOpenHabit, quests, overallProgressPct, focusStreak, todayProgressPct, completedTodayIds }: DashboardProps) {
+export function Dashboard({ 
+  onOpenHabit, 
+  quests, 
+  overallProgressPct, 
+  focusStreak, 
+  todayProgressPct, 
+  completedTodayIds,
+  levelInfo,
+  onOpenAchievements
+}: DashboardProps) {
   return (
     <>
+      {/* Player Level & XP Card */}
+      <section 
+        className="bg-gradient-to-r from-[#0c0c0c] to-[#121212] border border-[#d4af37]/25 rounded-2xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden cursor-pointer hover:border-[#d4af37]/40 transition-colors group"
+        onClick={onOpenAchievements}
+      >
+        <div className="flex justify-between items-center mb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.2)]">
+              <Trophy size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-[#d4af37] font-bold">
+                  Уровень {levelInfo.level}
+                </span>
+                <span className="text-[9px] bg-white/10 text-gray-300 px-1.5 py-0.5 rounded font-mono uppercase">
+                  {levelInfo.title}
+                </span>
+              </div>
+              <h3 className="text-white text-sm font-medium tracking-wide">
+                Прокачка профиля
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-[#d4af37] text-xs font-mono font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+            <span>Трофеи</span>
+            <ChevronRight size={14} />
+          </div>
+        </div>
+
+        {/* XP Progress Bar */}
+        <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden mt-3 mb-1.5 p-0.5">
+          <div 
+            className="bg-gradient-to-r from-[#b5952f] to-[#d4af37] h-full rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(212,175,55,0.6)]" 
+            style={{ width: `${levelInfo.progressPct}%` }}
+          />
+        </div>
+        <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
+          <span>{levelInfo.currentLevelXp} / {levelInfo.neededLevelXp} XP</span>
+          <span className="text-[#d4af37]">{levelInfo.progressPct}%</span>
+        </div>
+      </section>
+
       {/* Progress Bars */}
       <section className="flex flex-col gap-4">
         <div>
