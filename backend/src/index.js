@@ -110,13 +110,30 @@ cron.schedule('* * * * *', async () => {
 // 4. Setup CRON job for Gamification (Runs at 00:01 every day)
 cron.schedule('1 0 * * *', async () => {
     console.log('[CRON] Midnight check: Streaks and Lives...');
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    const currentMonthStr = new Date().toISOString().substring(0, 7); // YYYY-MM
+    const now = new Date();
+    const currentMonthStr = now.toISOString().substring(0, 7); // YYYY-MM
+    // UTC dates
+    const todayUtc = now.toISOString().split('T')[0];
+    const yesterdayDateUtc = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayUtc = yesterdayDateUtc.toISOString().split('T')[0];
+    // Local dates
+    const formatLocalDate = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+    const todayLocal = formatLocalDate(now);
+    const yesterdayDateLocal = new Date(now);
+    yesterdayDateLocal.setDate(yesterdayDateLocal.getDate() - 1);
+    const yesterdayLocal = formatLocalDate(yesterdayDateLocal);
+    // Set of valid dates representing "yesterday" or "today" in any relevant timezone
+    const validRecentDates = new Set([yesterdayUtc, yesterdayLocal, todayUtc, todayLocal]);
     const { data: users, error: usersErr } = await supabase.from('users').select('*');
-    if (usersErr || !users)
+    if (usersErr || !users) {
+        console.error('[CRON] Error fetching users:', usersErr);
         return;
+    }
     for (const user of users) {
         let updatedLives = user.lives ?? 3;
         let updatedShields = user.shields ?? 3;
@@ -127,26 +144,41 @@ cron.schedule('1 0 * * *', async () => {
             updatedShields = 3;
             updatedResetMonth = currentMonthStr;
         }
-        // 2. Достаем квесты и логи за вчерашний день
-        const { data: quests } = await supabase.from('quests').select('id').eq('user_id', user.id);
-        // Если у юзера нет активных квестов - пропускаем
-        if (!quests || quests.length === 0)
+        // 2. Достаем квесты юзера
+        const { data: quests, error: questsErr } = await supabase.from('quests').select('id').eq('user_id', user.id);
+        if (questsErr || !quests || quests.length === 0)
             continue;
-        // Ищем логи (выполненные задания) за вчера
-        // Так как supabase хранит в UTC, упрощенный запрос по дате (в MVP пойдет)
-        const { data: logs } = await supabase.from('quest_logs')
+        // 3. Проверяем, выполнил ли юзер привычки
+        // А) В приложении уже зафиксировано закрытие дня (user.last_active_date совпадает с недавней датой)
+        const userAlreadyClosedDay = Boolean(user.last_active_date && validRecentDates.has(user.last_active_date));
+        // Б) Проверяем логи выполнения за последние 30 часов
+        const windowStart = new Date(now.getTime() - 30 * 60 * 60 * 1000).toISOString();
+        const { data: logs, error: logsErr } = await supabase.from('quest_logs')
             .select('quest_id')
             .eq('user_id', user.id)
-            .gte('created_at', yesterdayStr + 'T00:00:00')
-            .lte('created_at', yesterdayStr + 'T23:59:59');
-        const completedQuestsCount = logs ? logs.length : 0;
-        const allCompleted = completedQuestsCount >= quests.length;
-        // Проверяем, использовал ли он щит вчера
-        const usedShieldYesterday = user.last_shield_used_date === yesterdayStr;
+            .gte('completed_at', windowStart);
+        if (logsErr) {
+            console.error(`[CRON] Error fetching quest_logs for user ${user.id}:`, logsErr);
+            // При ошибке запроса не штрафуем пользователя!
+            continue;
+        }
+        const completedQuestIds = new Set((logs || []).map(l => l.quest_id));
+        const allQuestsLogged = quests.every(q => completedQuestIds.has(q.id));
+        const allCompleted = userAlreadyClosedDay || allQuestsLogged;
+        // Проверяем, использовал ли он щит
+        const usedShield = Boolean(user.last_shield_used_date && validRecentDates.has(user.last_shield_used_date));
         let lifeLost = false;
-        if (!allCompleted) {
-            if (usedShieldYesterday) {
-                // Щит спас от потери жизни! Стрик просто не сбросился.
+        if (allCompleted) {
+            // Все привычки выполнены!
+            // Если стрик не был инкрементирован клиентом, обновляем
+            if (!user.last_active_date || !validRecentDates.has(user.last_active_date)) {
+                updatedStreak = (user.streak ?? 0) + 1;
+            }
+        }
+        else {
+            if (usedShield) {
+                // Щит спас от потери жизни! Стрик не сбрасывается.
+                console.log(`[CRON] User ${user.id} protected by shield.`);
             }
             else {
                 // Провал: Жизнь сгорает, Стрик обнуляется
@@ -160,7 +192,8 @@ cron.schedule('1 0 * * *', async () => {
             shields: updatedShields,
             last_shield_reset_month: updatedResetMonth,
             lives: updatedLives,
-            streak: updatedStreak
+            streak: updatedStreak,
+            last_active_date: allCompleted ? (user.last_active_date || yesterdayUtc) : user.last_active_date
         }).eq('id', user.id);
         // Отправляем пуш-уведомление в Телеграм, если жизнь сгорела
         if (lifeLost && user.alerts_enabled !== false) {
@@ -179,4 +212,3 @@ bot.start({
         console.log(`🚀 Bot @${botInfo.username} is running...`);
     }
 });
-//# sourceMappingURL=index.js.map
