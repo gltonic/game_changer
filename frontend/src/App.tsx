@@ -152,7 +152,9 @@ function App() {
         const willBeCompletedCount = alreadyCompletedToday ? completedTodayIds.length : (completedTodayIds.length + 1);
         const allQuestsCompletedToday = quests.length > 0 && willBeCompletedCount >= quests.length;
         
-        const todayDateStr = new Date().toISOString().split('T')[0];
+        // Локальная календарная дата пользователя (YYYY-MM-DD)
+        const d = new Date();
+        const todayDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         if (allQuestsCompletedToday && userDb?.last_active_date !== todayDateStr) {
           updatePayload.streak = (userDb?.streak || 0) + 1;
           updatePayload.last_active_date = todayDateStr;
@@ -684,7 +686,8 @@ function App() {
                 onClick={async () => {
                   if ((userDb?.shields || 0) <= 0) return;
                   setIsSaving(true);
-                  const today = new Date().toISOString().split('T')[0];
+                  const d = new Date();
+                  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                   
                   if (userDb.last_shield_used_date === today) {
                     alert('You already used a shield today!');
