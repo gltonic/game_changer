@@ -75,11 +75,12 @@ jobs:
             # 5. Создаем/обновляем .env файл
             echo "⚙️ Запись файла конфигурации .env..."
             cat << 'EOF' > .env
-TELEGRAM_BOT_TOKEN=8416333905:AAFkz4luIGu1evvFEJhQZuCVW-4LwlO1WwY
-SUPABASE_URL="https://uhowccknbtavymbygksz.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVob3djY2tuYnRhdnltYnlna3N6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTExMzY0MCwiZXhwIjoyMTA2Njg5NjQwfQ.gFuVFP3SNBdEFyhyWXitjFM9OjiV4IUiZQp3egIjY60
-MINI_APP_URL="https://gamechanger-zeta.vercel.app/"
-EOF
+            TELEGRAM_BOT_TOKEN=8416333905:AAFkz4luIGu1evvFEJhQZuCVW-4LwlO1WwY
+            SUPABASE_URL=https://uhowccknbtavymbygksz.supabase.co
+            SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVob3djY2tuYnRhdnltYnlna3N6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTExMzY0MCwiZXhwIjoyMTA2Njg5NjQwfQ.gFuVFP3SNBdEFyhyWXitjFM9OjiV4IUiZQp3egIjY60
+            MINI_APP_URL=https://gamechanger-zeta.vercel.app/
+            EOF
+            sed -i 's/^[ \t]*//' .env
 
             echo "📦 Установка зависимостей Node.js..."
             npm install
