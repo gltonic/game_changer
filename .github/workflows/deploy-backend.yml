@@ -93,7 +93,7 @@ jobs:
             pm2 delete all || true
 
             echo "🚀 Запуск чистого процесса $APP_NAME..."
-            pm2 start npm --name "$APP_NAME" -- start
+            pm2 start src/index.js --name "$APP_NAME"
             pm2 save
 
             sleep 4
