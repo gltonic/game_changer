@@ -59,7 +59,6 @@ jobs:
               echo "🔄 Pulling latest changes from git..."
               git fetch origin main
               git reset --hard origin/main
-              git clean -fd
             else
               echo "⚠️ Git-репозиторий не инициализирован. Клонируем проект..."
               git clone https://github.com/gltonic/game_changer.git temp_repo
@@ -73,11 +72,17 @@ jobs:
               cd backend || exit 1
             fi
 
+            # 5. Создаем/обновляем .env файл
+            echo "⚙️ Запись файла конфигурации .env..."
+            cat << 'EOF' > .env
+TELEGRAM_BOT_TOKEN=8416333905:AAFkz4luIGu1evvFEJhQZuCVW-4LwlO1WwY
+SUPABASE_URL="https://uhowccknbtavymbygksz.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVob3djY2tuYnRhdnltYnlna3N6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTExMzY0MCwiZXhwIjoyMTA2Njg5NjQwfQ.gFuVFP3SNBdEFyhyWXitjFM9OjiV4IUiZQp3egIjY60
+MINI_APP_URL="https://gamechanger-zeta.vercel.app/"
+EOF
+
             echo "📦 Установка зависимостей Node.js..."
             npm install
-
-            echo "🔨 Сборка проекта TypeScript..."
-            npm run build || true
 
             APP_NAME="${{ secrets.PM2_APP_NAME || 'bot' }}"
             echo "📋 Текущие процессы PM2:"
@@ -89,6 +94,10 @@ jobs:
             echo "🚀 Запуск чистого процесса $APP_NAME..."
             pm2 start npm --name "$APP_NAME" -- start
             pm2 save
+
+            sleep 4
+            echo "📄 Логи запуска бота:"
+            pm2 logs "$APP_NAME" --lines 30 --nostream || true
 
             echo "📋 Итоговый статус PM2:"
             pm2 list
