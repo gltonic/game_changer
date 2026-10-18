@@ -84,6 +84,8 @@ jobs:
 
             echo "📦 Установка зависимостей Node.js..."
             npm install
+            echo "🔨 Сборка проекта TypeScript..."
+            npm run build
 
             APP_NAME="${{ secrets.PM2_APP_NAME || 'bot' }}"
             echo "📋 Текущие процессы PM2:"
